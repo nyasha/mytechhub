@@ -1,0 +1,46 @@
+name: Build Kraalands OS Portable
+
+on:
+  push:
+    branches:
+      - kraalands-portable-build
+  workflow_dispatch:
+
+jobs:
+  build-windows-portable:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        working-directory: kraalands-portable
+        run: npm install
+
+      - name: Build portable Windows executable
+        working-directory: kraalands-portable
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npx electron-builder --win portable --x64 --publish never
+
+      - name: Verify executable
+        run: |
+          $files = Get-ChildItem -Path "kraalands-portable/dist" -Filter "Kraalands-OS-Portable-*.exe"
+          if ($files.Count -lt 1) { throw "Portable executable not found" }
+          $files | Format-Table FullName, Length
+
+      - name: Upload portable executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kraalands-OS-Portable-Windows-x64
+          path: kraalands-portable/dist/Kraalands-OS-Portable-*.exe
+          if-no-files-found: error
+          retention-days: 7

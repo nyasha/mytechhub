@@ -1,0 +1,10 @@
+{
+  "name":"kraalands-os-portable",
+  "version":"0.2.1",
+  "description":"Kraalands OS portable desktop MVP",
+  "main":"main.cjs",
+  "author":"Tech Hub Harare",
+  "license":"UNLICENSED",
+  "devDependencies":{"electron":"38.0.0","electron-builder":"26.0.12"},
+  "build":{"appId":"zw.co.cowork.kraalandsos","productName":"Kraalands OS","directories":{"output":"dist"},"files":["main.cjs","index.html"],"win":{"target":[{"target":"portable","arch":["x64"]}]},"artifactName":"Kraalands-OS-Portable-${version}.${ext}"}
+}

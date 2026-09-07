@@ -1,0 +1,75 @@
+name: Build Kraalands v0.3 Pre-Supabase
+
+on:
+  push:
+    branches: [kraalands-v03-pre-supabase]
+    paths:
+      - 'kraalands-v03-payload.b64'
+      - '.github/workflows/kraalands-v03.yml'
+  workflow_dispatch:
+
+jobs:
+  build-windows-portable:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Decode source payload
+        shell: pwsh
+        run: |
+          $bytes = [Convert]::FromBase64String((Get-Content -Raw kraalands-v03-payload.b64))
+          [IO.File]::WriteAllBytes('kraalands-v03-source.zip', $bytes)
+          Expand-Archive -Path kraalands-v03-source.zip -DestinationPath buildsrc -Force
+
+      - name: Install dependencies
+        shell: pwsh
+        working-directory: buildsrc/kraalands-v0.3-pre-supabase
+        run: npm install --no-audit --no-fund
+
+      - name: Run domain tests
+        shell: pwsh
+        working-directory: buildsrc/kraalands-v0.3-pre-supabase
+        run: npm run test
+
+      - name: Build renderer
+        shell: pwsh
+        working-directory: buildsrc/kraalands-v0.3-pre-supabase
+        run: npm run build
+
+      - name: Build portable Windows executable
+        shell: pwsh
+        working-directory: buildsrc/kraalands-v0.3-pre-supabase
+        run: npx electron-builder --win portable --x64
+
+      - name: Verify executable
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path 'buildsrc/kraalands-v0.3-pre-supabase/release' -Filter '*.exe' | Where-Object { $_.Name -notmatch 'Setup' } | Select-Object -First 1
+          if (-not $exe) { throw 'Portable executable not found' }
+          Write-Host "Portable: $($exe.FullName) $([math]::Round($exe.Length/1MB,2)) MB"
+          Copy-Item $exe.FullName 'Kraalands-OS-Portable-v0.3.0-pre-Supabase.exe'
+
+      - name: Package public deployment
+        shell: pwsh
+        run: |
+          Compress-Archive -Path 'buildsrc/kraalands-v0.3-pre-supabase/public-site/kraalands/*' -DestinationPath 'Kraalands-Public-cowork-deploy-v0.3.0.zip' -Force
+
+      - name: Upload portable app
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kraalands-OS-Portable-v0.3.0-pre-Supabase
+          path: Kraalands-OS-Portable-v0.3.0-pre-Supabase.exe
+          retention-days: 7
+
+      - name: Upload public deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kraalands-Public-cowork-deploy-v0.3.0
+          path: Kraalands-Public-cowork-deploy-v0.3.0.zip
+          retention-days: 7
